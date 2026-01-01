@@ -1,0 +1,29 @@
+[project]
+name = "paperless_orchestrator_agent"
+version = "0.1.0"
+description = "An AI agent to manage documents in Paperless-NGX."
+authors = ["Gemini"]
+requires-python = ">=3.9"
+dependencies = [
+    "google-adk>=1.0.0",
+    "google-generativeai",
+    "httpx",
+    "python-dotenv",
+    "boto3", # For AWS S3 backup
+    "google-cloud-storage", # For Google Cloud Storage backup
+    "pdfplumber",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "isort",
+]
+
+[tool.black]
+line-length = 99
+
+[tool.isort]
+profile = "black"
+line_length = 99

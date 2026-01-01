@@ -1,0 +1,48 @@
+version: "3.4"
+services:
+  paperless_redis: # Formerly "broker"
+    image: redis:7
+    container_name: paperless_redis
+    restart: unless-stopped
+
+  paperless_ngx: # Formerly "webserver"
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless_ngx
+    restart: unless-stopped
+    depends_on:
+      - paperless_redis
+    ports:
+      # Exposes the Paperless web interface on port 8001.
+      # Access it at http://<your-docker-host-ip>:8001
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./data:/usr/src/paperless/data
+      - ./media:/usr/src/paperless/media
+      - ./consume:/usr/src/paperless/consume
+      - ./export:/usr/src/paperless/export
+    environment:
+      # Connect to the renamed Redis service
+      PAPERLESS_REDIS: redis://paperless_redis:6379
+      
+      # Web UI admin credentials
+      # Use these to log in to the web interface for the first time.
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: admin # Change in production!
+
+      PAPERLESS_URL: http://localhost:8001
+      # Set user and group IDs to your host user's UID and GID
+      # Find them with `id -u` and `id -g`
+      USERMAP_UID: 1000
+      USERMAP_GID: 1000
+
+volumes:
+  data:
+  media:
+  consume:
+  export:
+  agent_data:
