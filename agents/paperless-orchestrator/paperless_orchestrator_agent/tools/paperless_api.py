@@ -5,6 +5,7 @@ All tools are async for better performance and parallel execution.
 import os
 import logging
 import re
+import uuid
 import unicodedata
 import httpx
 from dotenv import load_dotenv
@@ -31,17 +32,15 @@ def _get_auth_headers():
     return {"Authorization": f"Token {PAPERLESS_API_TOKEN}"}
 
 
-async def post_document(tool_context: ToolContext, filename: str, title: str = None, correspondent_id: int = None, document_type_id: int = None, tag_ids: list[int] = None, created_date: str = None) -> dict:
+async def post_document(tool_context: ToolContext, filename: str, correspondent_id: int = None, document_type_id: int = None, tag_ids: list[int] = None, created_date: str = None) -> dict:
     """
     Faz upload de um documento da pasta temp-data para o Paperless-NGX.
 
     A tool busca automaticamente do state:
-    - title: Título extraído do documento
     - correspondent_id, tag_ids, document_type_id: IDs criados pelos agents anteriores
 
     Args:
         filename: Nome do arquivo na pasta temp-data.
-        title: Título do documento (se None, busca do state)
         correspondent_id: ID do correspondente (se None, busca do state)
         document_type_id: ID do tipo de documento (se None, busca do state)
         tag_ids: Lista de IDs de tags (se None, busca do state)
@@ -52,15 +51,9 @@ async def post_document(tool_context: ToolContext, filename: str, title: str = N
     """
     endpoint = f"{PAPERLESS_URL}/api/documents/post_document/"
 
-    # Obtém title do state se não fornecido
-    if not title:
-        document_info = tool_context.state.get("document_info", {})
-        title = document_info.get("title")
-
-    if not title:
-        error_msg = "No title provided or found in state."
-        logger.error(error_msg)
-        return {"status": "error", "message": error_msg}
+    # Usa o nome do arquivo (sem extensão) como título
+    title = Path(filename).stem
+    logger.info("Using filename as title: '%s'", title)
 
     data = {
         "title": title,
@@ -87,8 +80,13 @@ async def post_document(tool_context: ToolContext, filename: str, title: str = N
         logger.info("✓ Starting upload - file: %s, title: %s", filename, title)
 
         async with httpx.AsyncClient(timeout=60.0) as client:
+            # Generate a unique filename for the upload to avoid conflicts
+            original_extension = Path(filename).suffix
+            unique_upload_filename = f"{uuid.uuid4()}{original_extension}"
+            logger.info(f"Uploading temp file '{filename}' as '{unique_upload_filename}'")
+
             files = {
-                "document": (filename, file_content)
+                "document": (unique_upload_filename, file_content)
             }
 
             response = await client.post(

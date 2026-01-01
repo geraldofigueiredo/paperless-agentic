@@ -10,6 +10,7 @@ from google.adk.tools.tool_context import ToolContext
 from dotenv import load_dotenv
 import logging
 import base64
+import uuid
 from typing import Optional
 from google.genai import types
 from pathlib import Path
@@ -21,42 +22,14 @@ from .config import TEMP_DATA_DIR
 MODEL = "gemini-2.0-flash"
 logger = logging.getLogger(__name__)
 
-async def save_pdf_to_temp_and_create_artifact(
-    tool_context: ToolContext, file_content: str, file_name: str
-) -> str:
-    """
-    Saves a PDF file to the temp-data directory and creates an artifact.
+async def save_filename_to_state(tool_context: ToolContext, filename: str) -> str:
+    """Saves the provided filename to the session state."""
+    tool_context.state["filename"] = filename
+    logger.info(f"Filename '{filename}' saved to state.")
+    return f"Filename '{filename}' successfully saved to state."
 
-    Args:
-        tool_context: The context of the tool.
-        file_content: The base64-encoded content of the PDF file.
-        file_name: The name of the file.
 
-    Returns:
-        A success message with the saved artifact's name.
-    """
-    try:
-        file_bytes = base64.b64decode(file_content)
-    except Exception as e:
-        logger.error(f"Failed to decode base64 content for file '{file_name}': {e}")
-        return f"Error: Invalid file content."
 
-    # Save file to temp-data
-    file_path = TEMP_DATA_DIR / file_name
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
-    logger.info(f"File '{file_name}' saved to '{TEMP_DATA_DIR}'.")
-
-    # Save filename to state
-    tool_context.state["filename"] = file_name
-
-    # Create artifact
-    artifact_part = types.Part(
-        inline_data=types.Blob(mime_type="application/pdf", data=file_bytes)
-    )
-    await tool_context.save_artifact(file_name, artifact_part)
-    
-    return f"Artifact {file_name} saved successfully."
 
 # Document Analyzer Agent
 document_analyzer_agent = Agent(
@@ -65,7 +38,6 @@ document_analyzer_agent = Agent(
     description="Analisa documentos e extrai metadados usando capacidades de visão nativas",
     instruction=prompts.DOCUMENT_ANALYZER_INSTRUCTION,
     tools=[
-        load_artifacts,
         FunctionTool(func=document_analyzer.save_document_info),
         FunctionTool(func=file_manager.extract_text_from_pdf),
     ],
@@ -93,7 +65,6 @@ document_uploader_agent = Agent(
     description="Faz upload do documento com todos os metadados coletados",
     instruction=prompts.DOCUMENT_UPLOADER_INSTRUCTION,
     tools=[
-        load_artifacts,
         FunctionTool(func=paperless_api.post_document),
     ],
     output_key="upload_result",
@@ -129,11 +100,13 @@ root_agent = Agent(
     description="Assistente principal para gerenciar documentos no Paperless-NGX",
     instruction=prompts.ROOT_AGENT_INSTRUCTION,
     tools=[
-        FunctionTool(func=save_pdf_to_temp_and_create_artifact),
-        load_artifacts,
+        FunctionTool(func=save_filename_to_state),
+        FunctionTool(func=file_manager.extract_text_from_pdf),
+        FunctionTool(func=document_analyzer.save_document_info),
     ],
     sub_agents=[
         ingestion_workflow_agent,
         search_agent,
     ],
+    output_key="root_agent"
 )
