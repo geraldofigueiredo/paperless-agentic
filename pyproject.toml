@@ -1,7 +1,7 @@
 [project]
-name = "paperless-orchestrator"
+name = "paperless-agentic"
 version = "0.1.0"
-description = "An AI-powered document orchestrator for Paperless-NGX with a Streamlit UI."
+description = "A Multi-Agent AI Ecosystem for Paperless-NGX using Gemini."
 authors = ["Gemini"]
 requires-python = ">=3.9"
 dependencies = [

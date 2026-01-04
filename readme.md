@@ -1,13 +1,13 @@
-# 📄 Paperless Orchestrator
+# 🤖 Paperless Agentic
 
-**An AI-Powered Intelligent Orchestrator for Paperless-NGX**
+**An Agentic AI Ecosystem for Document Intelligence in Paperless-NGX**
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Google ADK](https://img.shields.io/badge/AI-Google_ADK-red.svg)](https://github.com/google/ai-agent-sdk)
 [![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![Paperless-NGX](https://img.shields.io/badge/DMS-Paperless--NGX-green.svg)](https://docs.paperless-ngx.com/)
 
-Paperless Orchestrator is a state-of-the-art document assistant that bridges the gap between raw file storage and intelligent knowledge management. Built on top of **Google's Agent Development Kit (ADK)** and powered by **Gemini**, this tool transforms a standard document management system (Paperless-NGX) into a fully automated, agentic workspace.
+**Paperless Agentic** is a cutting-edge document ecosystem that transforms static file storage into an autonomous workspace. Powered by **Google Gemini Vision** and orchestrated via the **Agent Development Kit (ADK)**, it uses a multi-agent system to "see", understand, and organize your documents with zero manual effort.
 
 ---
 
@@ -59,8 +59,8 @@ Capable of listing, searching, and detailing documents via natural language.
 ### Steps
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-username/paperless-orchestrator.git
-   cd paperless-orchestrator
+   git clone https://github.com/your-username/paperless-agentic.git
+   cd paperless-agentic
    ```
 
 2. **Configure Environment Variables**:
@@ -87,7 +87,7 @@ Capable of listing, searching, and detailing documents via natural language.
 
 ## 🏗️ Technical Expertise: Challenges Overcome
 
-During the development of this orchestrator, several critical agentic design challenges were solved:
+During the development of **Paperless Agentic**, several critical agentic design challenges were solved:
 - **State Management in Streamlit**: Implemented a session-isolated reset mechanism to ensure that each document ingestion starts with a clean slate, preventing context leakage between unrelated files.
 - **Async Event Loop Harmony**: Solved the "Loop already running" conflict in Streamlit using `nest_asyncio` and custom runner wrappers, allowing the ADK's asynchronous events to stream directly to the UI.
 - **Tool-State Bridging**: Designed specialized tools that bridge the gap between the LLM's reasoning and the Paperless API requirements, ensuring IDs are persisted across sub-agent transitions.

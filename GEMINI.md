@@ -1,6 +1,6 @@
 # Project Overview
 
-Paperless Orchestrator is an AI-driven document ecosystem that automates organization in Paperless-NGX. It uses Google's ADK and Gemini to analyze documents via computer vision and reconcile metadata automatically through a multi-agent system.
+Paperless Agentic is an AI-driven document ecosystem that automates organization in Paperless-NGX. It uses Google's ADK and Gemini to analyze documents via computer vision and reconcile metadata automatically through a multi-agent system.
 
 # Building and Running
 

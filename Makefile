@@ -1,4 +1,4 @@
-# Makefile for the Paperless Orchestrator project
+# Makefile for the Paperless Agentic project
 
 # --- Variables ---
 AGENT_DIR = agents/paperless-orchestrator
