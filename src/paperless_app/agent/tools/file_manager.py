@@ -9,7 +9,7 @@ import base64
 import pdfplumber
 from typing import Optional, Union
 from pathlib import Path
-from ..config import TEMP_DATA_DIR
+from paperless_app.config import TEMP_DATA_DIR
 
 logger = logging.getLogger(__name__)
 

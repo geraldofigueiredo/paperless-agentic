@@ -7,15 +7,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Diretório base do agente
-AGENT_DIR = Path(__file__).parent.parent
+# `config.py` is in `src/paperless_app/`, so we go up two levels to get the project root.
+PROJECT_ROOT = Path(os.getenv("PROJECT_ROOT", Path(__file__).parent.parent.parent))
 
 # Pasta temporária para arquivos a serem processados
-# Pode ser configurada via variável de ambiente TEMP_DATA_DIR
-# Padrão: temp-data dentro do diretório do agente
-TEMP_DATA_DIR = Path(
-    os.getenv("TEMP_DATA_DIR", str(AGENT_DIR / "temp-data"))
-)
+TEMP_DATA_DIR = PROJECT_ROOT / "temp-data"
 
 # Garante que o diretório existe
 TEMP_DATA_DIR.mkdir(parents=True, exist_ok=True)

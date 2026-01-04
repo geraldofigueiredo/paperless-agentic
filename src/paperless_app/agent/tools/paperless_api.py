@@ -7,12 +7,13 @@ import logging
 import re
 import uuid
 import unicodedata
+import random
 import httpx
 from dotenv import load_dotenv
 from google.adk.tools import ToolContext
 from pathlib import Path
 
-from ..config import TEMP_DATA_DIR, DELETE_AFTER_UPLOAD
+from paperless_app.config import TEMP_DATA_DIR, DELETE_AFTER_UPLOAD
 
 # Load environment variables from .env file
 load_dotenv()
@@ -55,6 +56,28 @@ async def post_document(tool_context: ToolContext, filename: str, correspondent_
     title = Path(filename).stem
     logger.info("Using filename as title: '%s'", title)
 
+    # Fetch missing metadata from state if not provided as arguments
+    if correspondent_id is None:
+        correspondent_id = tool_context.state.get("correspondent_id")
+        if correspondent_id:
+            logger.info("Fetched correspondent_id from state: %s", correspondent_id)
+            
+    if document_type_id is None:
+        document_type_id = tool_context.state.get("document_type_id")
+        if document_type_id:
+            logger.info("Fetched document_type_id from state: %s", document_type_id)
+            
+    if tag_ids is None:
+        tag_ids = tool_context.state.get("tag_ids")
+        if tag_ids:
+            logger.info("Fetched tag_ids from state: %s", tag_ids)
+            
+    if created_date is None:
+        doc_info = tool_context.state.get("document_info", {})
+        created_date = doc_info.get("document_date")
+        if created_date:
+            logger.info("Fetched created_date from state: %s", created_date)
+
     data = {
         "title": title,
     }
@@ -65,7 +88,13 @@ async def post_document(tool_context: ToolContext, filename: str, correspondent_
     if tag_ids:
         data["tags"] = tag_ids
     if created_date:
-        data["created"] = created_date
+        # Simple validation: Paperless expects YYYY-MM-DD or ISO 8601
+        # Validate if it looks like a date (YYYY-MM-DD) before sending to avoid 400 errors
+        if isinstance(created_date, str) and re.match(r"^\d{4}-\d{2}-\d{2}", created_date):
+            data["created"] = created_date
+            logger.info("Using valid created_date for upload: %s", created_date)
+        else:
+            logger.warning("Ignoring invalid created_date for upload: %r", created_date)
 
     try:
         file_path = TEMP_DATA_DIR / filename
@@ -213,23 +242,53 @@ async def create_correspondent(name: str) -> dict:
         return response.json()
 
 
-async def create_tag(name: str) -> dict:
+async def create_document_type(name: str) -> dict:
     """
-    Creates a new tag in Paperless-NGX. Use this only after checking
-    that the tag does not already exist with 'list_tags'.
-
-    Args:
-        name (str): The name for the new tag. Must be unique.
-
-    Returns:
-        dict: The newly created tag object, including its new ID.
+    Creates a new document type in Paperless-NGX.
     """
-    endpoint = f"{PAPERLESS_URL}/api/tags/"
+    endpoint = f"{PAPERLESS_URL}/api/document_types/"
     data = {"name": name}
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(endpoint, headers=_get_auth_headers(), json=data)
         response.raise_for_status()
         return response.json()
+
+
+async def create_tag(name: str) -> dict:
+    """
+    Creates a new tag in Paperless-NGX. Handles 400 errors if the tag
+    already exists.
+
+    Args:
+        name (str): The name for the new tag. Must be unique.
+
+    Returns:
+        dict: The newly created tag object, or a message indicating it already exists.
+    """
+    endpoint = f"{PAPERLESS_URL}/api/tags/"
+    random_color = _generate_random_hex_color()
+    data = {"name": name, "color": random_color}
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(endpoint, headers=_get_auth_headers(), json=data)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 400:
+            logger.warning(
+                f"Could not create tag '{name}', it likely already exists. "
+                f"API response: {e.response.text}"
+            )
+            # Return a structure that doesn't break the flow
+            return {"status": "already_exists", "name": name}
+        else:
+            raise e
+
+def _generate_random_hex_color():
+    """
+    Generates a random hexadecimal color code (e.g., #RRGGBB).
+    """
+    return '#%06x' % random.randint(0, 0xFFFFFF)
 
 
 def _normalize_name(name: str) -> str:
@@ -373,7 +432,6 @@ async def get_or_create_tag(tool_context: ToolContext, name: str) -> dict:
     for tag in all_tags:
         if tag.get("name", "").lower() == name.lower():
             logger.info("Found existing tag with ID: %s", tag["id"])
-            # Adiciona à lista de tag_ids no state
             if "tag_ids" not in tool_context.state:
                 tool_context.state["tag_ids"] = []
             if tag["id"] not in tool_context.state["tag_ids"]:
@@ -382,10 +440,64 @@ async def get_or_create_tag(tool_context: ToolContext, name: str) -> dict:
 
     logger.info("Tag '%s' not found. Creating a new one.", name)
     new_tag = await create_tag(name)
-    # Adiciona à lista de tag_ids no state
+
     if "tag_ids" not in tool_context.state:
         tool_context.state["tag_ids"] = []
-    if new_tag["id"] not in tool_context.state["tag_ids"]:
+    if new_tag and new_tag.get("id") and new_tag.get("id") not in tool_context.state.get("tag_ids", []):
         tool_context.state["tag_ids"].append(new_tag["id"])
+        
     return new_tag
+
+
+async def select_document_type(tool_context: ToolContext, document_type_id: int) -> str:
+    """
+    Saves the selected document type ID to the session state.
+    Use this after listing document types to persist the selection.
+    """
+    tool_context.state["document_type_id"] = document_type_id
+    logger.info("Selected document_type_id saved to state: %s", document_type_id)
+    return f"Document type ID {document_type_id} successfully saved to state."
+
+
+async def get_or_create_document_type(tool_context: ToolContext, name: str) -> dict:
+    """
+    Finds a document type by name, performing a smart case-insensitive and normalized search.
+    If no similar document type is found, a new one is created.
+    Always returns a single document type object with its ID.
+
+    Args:
+        tool_context: The ADK tool context.
+        name (str): The name of the document type to find or create.
+
+    Returns:
+        dict: The document type object, including its ID.
+    """
+    logger.info("Getting or creating document type: '%s'", name)
+    all_types = await list_document_types()
+    
+    # Primeiro tenta match exato (case-insensitive)
+    for dt in all_types:
+        dt_name = dt.get("name", "")
+        if dt_name.lower() == name.lower():
+            logger.info("Found exact match document type with ID: %s", dt["id"])
+            tool_context.state["document_type_id"] = dt["id"]
+            return dt
+    
+    # Se não encontrou match exato, tenta match similar
+    for dt in all_types:
+        dt_name = dt.get("name", "")
+        if _names_are_similar(name, dt_name):
+            logger.info(
+                "Found similar document type '%s' (requested: '%s') with ID: %s",
+                dt_name,
+                name,
+                dt["id"],
+            )
+            tool_context.state["document_type_id"] = dt["id"]
+            return dt
+
+    logger.info("Document type '%s' not found. Creating a new one.", name)
+    new_dt = await create_document_type(name)
+    tool_context.state["document_type_id"] = new_dt["id"]
+    return new_dt
 

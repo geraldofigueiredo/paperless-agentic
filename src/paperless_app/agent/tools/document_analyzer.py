@@ -54,12 +54,9 @@ async def save_document_info(
         logger.info("  Type: %s", document_info["document_type"])
         logger.info("  Keywords: %s", document_info["keywords"])
         
-        return {
-            "status": "success",
-            "message": "✓ Informações do documento salvas com sucesso",
-            "document_info": document_info,
-        }
+        # Return a simple success message to signal completion to the agent
+        return "✓ Informações do documento salvas com sucesso."
     except Exception as e:
         error_msg = f"✗ Error saving document info: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        return {"status": "error", "message": f"Erro ao salvar informações: {str(e)}"}
+        return f"Erro ao salvar informações: {str(e)}"

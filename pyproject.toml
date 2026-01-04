@@ -1,7 +1,7 @@
 [project]
-name = "paperless_orchestrator_agent"
+name = "paperless-orchestrator"
 version = "0.1.0"
-description = "An AI agent to manage documents in Paperless-NGX."
+description = "An AI-powered document orchestrator for Paperless-NGX with a Streamlit UI."
 authors = ["Gemini"]
 requires-python = ">=3.9"
 dependencies = [
@@ -9,9 +9,12 @@ dependencies = [
     "google-generativeai",
     "httpx",
     "python-dotenv",
-    "boto3", # For AWS S3 backup
-    "google-cloud-storage", # For Google Cloud Storage backup
     "pdfplumber",
+    "streamlit>=1.50.0",
+    "nest-asyncio",
+    # Dependencies from the old agent project that might be needed
+    "boto3",
+    "google-cloud-storage",
 ]
 
 [project.optional-dependencies]

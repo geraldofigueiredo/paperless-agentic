@@ -3,6 +3,7 @@
 # --- Variables ---
 AGENT_DIR = agents/paperless-orchestrator
 DOCKER_COMPOSE_FILE = infra/docker-compose.yml
+PAPERLESS_UI_DIR = paperless-ui
 
 # --- Docker Infrastructure for Paperless-NGX ---
 
@@ -14,7 +15,17 @@ infra-up:
 .PHONY: infra-down
 infra-down:
 	@echo "Stopping Paperless-NGX infrastructure..."
-	docker-compose -f $(DOCKER_COMPOSE_FILE) down
+	docker-compose -f $(DOCKER_Compose_FILE) down
+
+# --- Streamlit UI ---
+
+.PHONY: run-ui
+run-ui:
+	@echo "Starting Streamlit UI with hot reloading..."
+	@echo "Navigate to the local URL shown in the terminal."
+	export PYTHONPATH=$(CURDIR)/src && \
+	uv sync && \
+	uv run streamlit run src/paperless_app/app.py
 
 # --- Running the Agent (using local ADK installation) ---
 

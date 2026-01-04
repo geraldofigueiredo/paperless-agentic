@@ -15,9 +15,9 @@ from typing import Optional
 from google.genai import types
 from pathlib import Path
 
-from . import prompts
-from .tools import paperless_api, document_analyzer, file_manager
-from .config import TEMP_DATA_DIR
+from paperless_app.agent import prompts
+from paperless_app.agent.tools import paperless_api, document_analyzer, file_manager
+from paperless_app.config import TEMP_DATA_DIR
 
 MODEL = "gemini-2.0-flash"
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ metadata_creator_agent = Agent(
     tools=[
         FunctionTool(func=paperless_api.get_or_create_correspondent),
         FunctionTool(func=paperless_api.get_or_create_tag),
-        FunctionTool(func=paperless_api.list_document_types),
+        FunctionTool(func=paperless_api.get_or_create_document_type),
     ],
     output_key="metadata_ids",
 )
@@ -101,8 +101,6 @@ root_agent = Agent(
     instruction=prompts.ROOT_AGENT_INSTRUCTION,
     tools=[
         FunctionTool(func=save_filename_to_state),
-        FunctionTool(func=file_manager.extract_text_from_pdf),
-        FunctionTool(func=document_analyzer.save_document_info),
     ],
     sub_agents=[
         ingestion_workflow_agent,
